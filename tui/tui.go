@@ -4,79 +4,49 @@ import (
 	"fmt"
 	"grafikart/lazyradio/radio"
 	"grafikart/lazyradio/utils"
-	"log"
 	"net/url"
-	"os/exec"
 
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-
-	"github.com/samber/lo"
 )
 
-var docStyle = lipgloss.NewStyle().Margin(1, 2)
+var (
+	panelStyle = lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("62"))
+)
 
-type listKeyMap struct {
-	openBrowser key.Binding
-	play        key.Binding
-	refresh     key.Binding
-}
-
-func newListKeyMap() *listKeyMap {
-	return &listKeyMap{
-		openBrowser: key.NewBinding(
-			key.WithKeys("o"),
-			key.WithHelp("o", "open yt music"),
-		),
-		play: key.NewBinding(
-			key.WithKeys("p"),
-			key.WithHelp("p", "play music"),
-		),
-		refresh: key.NewBinding(
-			key.WithKeys("r"),
-			key.WithHelp("r", "play music"),
-		),
-	}
-}
+var (
+	sidebarWidth = 25
+	footerHeight = 2
+)
 
 type Model struct {
-	tracks []ListItem
-	list   list.Model
-	keys   *listKeyMap
-}
+	footer    footer
+	trackList trackList
 
-type ListItem struct {
-	title, desc string
+	// State
+	tracks []radio.RadioItem
+	width  int
+	height int
+	err    error
 }
-
-func (i ListItem) Title() string       { return i.title }
-func (i ListItem) Description() string { return i.desc }
-func (i ListItem) FilterValue() string { return i.title }
 
 func NewModel() Model {
-	listKeys := newListKeyMap()
-	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
-	l.AdditionalShortHelpKeys = func() []key.Binding {
-		return []key.Binding{
-			listKeys.openBrowser,
-		}
-	}
-	l.DisableQuitKeybindings()
-	l.Title = "Last tracks"
+	p := radio.NewPlayer()
 	return Model{
-		list: l,
-		keys: listKeys,
+		trackList: newTrackList(p),
+		footer:    newFooter(p),
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return fetchTracks
+	return tea.Batch(
+		m.trackList.Init(),
+		m.footer.Init(),
+	)
 }
-
-type TracksMsg []radio.RadioItem
-type ErrMsg error
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -87,75 +57,49 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Quit when pressing CTRL C or Esc
 		case msg.Type == tea.KeyCtrlC, msg.Type == tea.KeyEsc:
 			return m, tea.Quit
-		// Open a track in the browser
-		case key.Matches(msg, m.keys.openBrowser), msg.Type == tea.KeyEnter:
-			openYtMusic(m.list.SelectedItem())
-		// Start playing a track
-		case key.Matches(msg, m.keys.play):
-			play(m.list.SelectedItem())
-		// Start playing a track
-		case key.Matches(msg, m.keys.refresh):
-			return m, fetchTracks
 		}
 
 	// Resize
 	case tea.WindowSizeMsg:
-		h, v := docStyle.GetFrameSize()
-		m.list.SetSize(msg.Width-h, msg.Height-v)
-
-	// New tracks are loaded
-	case TracksMsg:
-		items := lo.Map(msg, func(v radio.RadioItem, i int) list.Item {
-			return ListItem{title: v.Name, desc: v.Artist}
-		})
-		m.list.SetItems(items)
-		return m, nil
+		m.width = msg.Width
+		m.height = msg.Height
+		m.updateSizes()
 	}
 
-	var cmd tea.Cmd
-	m.list, cmd = m.list.Update(msg)
-	return m, cmd
+	var cmdList, cmdFooter tea.Cmd
+	m.trackList, cmdList = m.trackList.Update(msg)
+	m.footer, cmdFooter = m.footer.Update(msg)
+	return m, tea.Batch(cmdList, cmdFooter)
 }
 
 func (m Model) View() string {
-	return docStyle.Render(m.list.View())
+	contentHeight := m.height - footerHeight - 4
+	sidebar := panelStyle.
+		Width(sidebarWidth).
+		Height(contentHeight).
+		Render("Sidebar")
+
+	return lipgloss.JoinVertical(
+		lipgloss.Top,
+		lipgloss.JoinHorizontal(
+			lipgloss.Left,
+			sidebar,
+			m.trackList.View(),
+		),
+		m.footer.View(),
+	)
 }
 
-func fetchTracks() tea.Msg {
-	tracks, err := radio.FetchLastNovaTracks()
-	if err != nil {
-		return ErrMsg(err)
-	}
-	return TracksMsg(tracks)
+func (m *Model) updateSizes() {
+	contentWidth := m.width - sidebarWidth - 4
+	contentHeight := m.height - footerHeight - 4
+	m.footer.SetSize(m.width-2, footerHeight)
+	m.trackList.SetSize(contentWidth, contentHeight)
 }
 
-func openYtMusic(v list.Item) {
-	switch vv := v.(type) {
-	case ListItem:
-		utils.OpenBrowser(fmt.Sprintf("https://music.youtube.com/search?q=%s", url.QueryEscape(vv.title+" "+vv.desc)))
-	default:
-		log.Fatalln("List element should be an ListItem")
-	}
-}
-
-func play(v list.Item) {
-	switch vv := v.(type) {
-	case ListItem:
-		cmd := exec.Command(
-			"mpv",
-			"--no-video",
-			"--ytdl-format=bestaudio",
-			fmt.Sprintf("ytdl://ytsearch1:%s", vv.title+" "+vv.desc),
-		)
-		err := cmd.Start()
-		if err != nil {
-			log.Fatal(fmt.Errorf("could not start mpv: %w", err))
-		}
-		err = cmd.Wait()
-		if err != nil {
-			log.Fatal(fmt.Errorf("could not wait for mpv: %w", err))
-		}
-	default:
-		log.Fatalln("List element should be an ListItem")
-	}
+func openYtMusic(item list.Item) {
+	u := fmt.Sprintf(
+		"https://music.youtube.com/search?q=%s", url.QueryEscape(item.FilterValue()),
+	)
+	utils.OpenBrowser(u)
 }

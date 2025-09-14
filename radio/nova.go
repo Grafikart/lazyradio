@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -16,9 +17,13 @@ type RadioItem struct {
 	Artist string
 }
 
-func FetchLastNovaTracks() ([]RadioItem, error) {
-	// f, err := os.Open("radio/nova.html")
-	f, err := fetchNovaPage()
+func (i RadioItem) Title() string       { return i.Name }
+func (i RadioItem) Description() string { return i.Artist }
+func (i RadioItem) FilterValue() string { return i.Name + " " + i.Artist }
+
+func FetchLastNovaTracks(n int) ([]RadioItem, error) {
+	f, err := os.Open(fmt.Sprintf("radio/nova%d.html", n))
+	// f, err := fetchNovaPage()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open radio playlist: %w", err)
 	}
@@ -27,7 +32,6 @@ func FetchLastNovaTracks() ([]RadioItem, error) {
 		return nil, fmt.Errorf("failed to parse radio document: %w", err)
 	}
 	var items []RadioItem
-	fmt.Printf("%+v", doc.Find(".wwtt_content .wwtt_right").Length())
 	doc.Find(".wwtt_content .wwtt_right").Each(func(i int, s *goquery.Selection) {
 		items = append(items, RadioItem{
 			Name:   s.Find("h2").First().Text(),
@@ -39,7 +43,7 @@ func FetchLastNovaTracks() ([]RadioItem, error) {
 }
 
 func fetchNovaPage() (io.Reader, error) {
-	// Get current time and format it as H:M
+	// Get Current time and format it as H:M
 	now := time.Now()
 	currentTime := fmt.Sprintf("%d:%d", now.Hour(), now.Minute())
 
