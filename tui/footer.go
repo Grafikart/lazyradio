@@ -38,7 +38,6 @@ func newFooter(player *radio.Player) footer {
 
 func (m footer) Init() tea.Cmd {
 	return tea.Batch(
-		// m.spinner.Tick,
 		m.listenCmd,
 	)
 }
@@ -47,7 +46,9 @@ func (m footer) Update(msg tea.Msg) (footer, tea.Cmd) {
 	switch msg := msg.(type) {
 	case spinner.TickMsg:
 		var cmd tea.Cmd
-		m.spinner, cmd = m.spinner.Update(msg)
+		if m.player.State() == radio.Loading {
+			m.spinner, cmd = m.spinner.Update(msg)
+		}
 		return m, cmd
 	case radio.PlayerOutputMsg:
 		m.info = string(msg)
@@ -68,6 +69,10 @@ func (m footer) Update(msg tea.Msg) (footer, tea.Cmd) {
 			)
 		}
 		return m, m.listenCmd
+	case radio.PlayerStateChangedMsg:
+		if msg == radio.Loading {
+			return m, m.spinner.Tick
+		}
 	case radio.PlayerMsg:
 		return m, m.listenCmd
 	}
