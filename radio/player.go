@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path"
 	"regexp"
 	"strconv"
 )
@@ -56,24 +57,15 @@ func (p *Player) Play(s string) {
 		_ = p.Stop()
 	}
 
-	// Create a socket file to interact with mpv
-	f, err := os.CreateTemp("", "mpvsocket")
-	if err != nil {
-		p.ch <- PlayerErrorMsg(fmt.Errorf("Cannot create temporary file %v", err))
-		return
-	}
-	defer os.Remove(f.Name())
-
-	// Create new context for this play session
+	p.socketFile = path.Join(os.TempDir(), "mpvsocket")
 	p.ctx, p.cancel = context.WithCancel(context.Background())
-	p.socketFile = f.Name()
 
 	// Create the mpv command
 	p.cmd = exec.CommandContext(p.ctx, "mpv",
 		fmt.Sprintf(`ytdl://ytsearch1:%s`, s),
 		"--ytdl-format=bestaudio",
 		"--no-video",
-		fmt.Sprintf("--input-ipc-server=%s", f.Name()),
+		fmt.Sprintf("--input-ipc-server=%s", p.socketFile),
 	)
 
 	stdout, err := p.cmd.StdoutPipe()
@@ -120,6 +112,7 @@ func (p *Player) Play(s string) {
 
 	// Wait for command completion in a goroutine
 	go func() {
+		defer os.Remove(p.socketFile)
 		err := p.cmd.Wait()
 		if err != nil {
 			p.setState(Stopped)

@@ -39,6 +39,7 @@ type Model struct {
 	sidebar   radioListModel
 
 	// State
+	player      *radio.Player
 	tracks      []radio.TrackItem
 	width       int
 	height      int
@@ -50,6 +51,7 @@ type Model struct {
 func NewModel() Model {
 	p := radio.NewPlayer()
 	return Model{
+		player:    p,
 		trackList: newTrackList(p),
 		footer:    newFooter(p),
 		sidebar:   newSidebar(),
@@ -67,6 +69,7 @@ func (m Model) Init() tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.renderCount++
+	var cmdList, cmdFooter tea.Cmd
 	switch msg := msg.(type) {
 
 	// Keypress
@@ -78,6 +81,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyLeft, tea.KeyRight:
 			m.togglePanel()
 		}
+		switch msg.String() {
+		case "p":
+			m.player.Pause()
+		}
 
 	// Resize
 	case tea.WindowSizeMsg:
@@ -85,10 +92,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.updateSizes()
 	case radioSelectedMsg:
-		m.togglePanel()
+		if m.panel == sidebarPanel {
+			m.togglePanel()
+		}
+		m.trackList, cmdList = m.trackList.Update(msg)
+		return m, cmdList
 	}
-
-	var cmdList, cmdFooter tea.Cmd
 	m.footer, cmdFooter = m.footer.Update(msg)
 	if m.panel == tracksPanel {
 		m.trackList, cmdList = m.trackList.Update(msg)
