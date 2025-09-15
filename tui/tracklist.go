@@ -10,16 +10,17 @@ import (
 	"github.com/samber/lo"
 )
 
-type trackList struct {
+type trackListModel struct {
 	// components
 	list list.Model
 
 	// state
-	item   radio.RadioItem
+	item   radio.TrackItem
 	width  int
 	height int
 	msg    string
 	player *radio.Player
+	radio  radioItem
 }
 
 type tracklistKeyMap struct {
@@ -38,7 +39,7 @@ var keys = tracklistKeyMap{
 	),
 }
 
-func newTrackList(p *radio.Player) trackList {
+func newTrackList(p *radio.Player) trackListModel {
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	l.Title = "Track List"
 	l.SetShowStatusBar(false)
@@ -47,20 +48,20 @@ func newTrackList(p *radio.Player) trackList {
 			keys.openBrowser,
 		}
 	}
-	return trackList{
+	return trackListModel{
 		list:   l,
 		player: p,
 	}
 }
 
-func (m trackList) Init() tea.Cmd {
-	return fetchTrackCmd
+func (m trackListModel) Init() tea.Cmd {
+	return nil
 }
 
 type tracksLoadedMsg []list.Item
 type nextTrackMsg struct{}
 
-func (m trackList) Update(msg tea.Msg) (trackList, tea.Cmd) {
+func (m trackListModel) Update(msg tea.Msg) (trackListModel, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	// Keypress
@@ -75,11 +76,22 @@ func (m trackList) Update(msg tea.Msg) (trackList, tea.Cmd) {
 			item := m.list.SelectedItem()
 			m.player.Play(item.FilterValue())
 			return m, nil
-		// Start playing a track
+		// Refresh track list
 		case key.Matches(msg, keys.refresh):
-			return m, fetchTrackCmd
+			return m, func() tea.Msg { return radioSelectedMsg(m.radio) }
+		}
+	case radioSelectedMsg:
+		m.list.ToggleSpinner()
+		m.radio = radioItem(msg)
+		return m, func() tea.Msg {
+			items, err := msg.fetcher()
+			if err != nil {
+				fmt.Printf("Error fetching track items: %s\n", err)
+			}
+			return tracksLoadedMsg(tracksToListItems(items))
 		}
 	case tracksLoadedMsg:
+		m.list.ToggleSpinner()
 		item := m.list.SelectedItem()
 		if item == nil {
 			return m, m.list.SetItems(msg)
@@ -93,8 +105,8 @@ func (m trackList) Update(msg tea.Msg) (trackList, tea.Cmd) {
 		return m, m.list.SetItems(msg)
 	case endMsg:
 		return m, tea.Sequence(
-			fetchTrack2Cmd,
-			nextCmd,
+			func() tea.Msg { return radioSelectedMsg(m.radio) },
+			func() tea.Msg { return nextTrackMsg{} },
 		)
 	case nextTrackMsg:
 		m.list.CursorUp()
@@ -105,41 +117,25 @@ func (m trackList) Update(msg tea.Msg) (trackList, tea.Cmd) {
 	return m, cmd
 }
 
-func (m trackList) View() string {
-	return panelStyle.
+func (m trackListModel) View(focused bool) string {
+	style := panelStyle
+	if !focused {
+		style = mutedPanelStyle
+	}
+	return style.
 		Width(m.width).
 		Height(m.height).
 		Render(m.msg, m.list.View())
 }
 
-func (m *trackList) SetSize(w, h int) {
+func (m *trackListModel) SetSize(w, h int) {
 	m.width = w
 	m.height = h
 	m.list.SetSize(w, h)
 }
 
-func fetchTrackCmd() tea.Msg {
-	tracks, err := radio.FetchLastNovaTracks(0)
-	if err != nil {
-		fmt.Printf("Error fetching nova tracks %s", err)
-	}
-	return tracksLoadedMsg(tracksToListItems(tracks))
-}
-
-func nextCmd() tea.Msg {
-	return nextTrackMsg{}
-}
-
-func fetchTrack2Cmd() tea.Msg {
-	tracks, err := radio.FetchLastNovaTracks(1)
-	if err != nil {
-		fmt.Printf("Error fetching nova tracks %s", err)
-	}
-	return tracksLoadedMsg(tracksToListItems(tracks))
-}
-
 // Converts a list of radioItem into a list compatible items
-func tracksToListItems(tracks []radio.RadioItem) []list.Item {
+func tracksToListItems(tracks []radio.TrackItem) []list.Item {
 	items := make([]list.Item, len(tracks))
 	for i, item := range tracks {
 		items[i] = list.Item(item)

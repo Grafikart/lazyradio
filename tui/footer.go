@@ -38,7 +38,7 @@ func newFooter(player *radio.Player) footer {
 
 func (m footer) Init() tea.Cmd {
 	return tea.Batch(
-		m.spinner.Tick,
+		// m.spinner.Tick,
 		m.listenCmd,
 	)
 }

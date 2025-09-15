@@ -11,37 +11,39 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-type RadioItem struct {
+type TrackItem struct {
 	Name   string
 	Artist string
 }
 
-func (i RadioItem) Title() string       { return i.Name }
-func (i RadioItem) Description() string { return i.Artist }
-func (i RadioItem) FilterValue() string { return i.Name + " " + i.Artist }
+func (i TrackItem) Title() string       { return i.Name }
+func (i TrackItem) Description() string { return i.Artist }
+func (i TrackItem) FilterValue() string { return i.Name + " " + i.Artist }
 
-func FetchLastNovaTracks(n int) ([]RadioItem, error) {
-	// f, err := os.Open(fmt.Sprintf("radio/nova%d.html", n))
-	f, err := fetchNovaPage()
-	if err != nil {
-		return nil, fmt.Errorf("failed to open radio playlist: %w", err)
-	}
-	doc, err := goquery.NewDocumentFromReader(f)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse radio document: %w", err)
-	}
-	var items []RadioItem
-	doc.Find(".wwtt_content .wwtt_right").Each(func(i int, s *goquery.Selection) {
-		items = append(items, RadioItem{
-			Name:   s.Find("h2").First().Text(),
-			Artist: s.Find("p").Last().Text(),
+func FetcherNova(id int) func() ([]TrackItem, error) {
+	return func() ([]TrackItem, error) {
+		// f, err := os.Open(fmt.Sprintf("radio/nova%d.html", n))
+		f, err := fetchNovaPage(id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open radio playlist: %w", err)
+		}
+		doc, err := goquery.NewDocumentFromReader(f)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse radio document: %w", err)
+		}
+		var items []TrackItem
+		doc.Find(".wwtt_content .wwtt_right").Each(func(i int, s *goquery.Selection) {
+			items = append(items, TrackItem{
+				Name:   s.Find("h2").First().Text(),
+				Artist: s.Find("p").Last().Text(),
+			})
 		})
-	})
 
-	return items, nil
+		return items, nil
+	}
 }
 
-func fetchNovaPage() (io.Reader, error) {
+func fetchNovaPage(id int) (io.Reader, error) {
 	// Get Current time and format it as H:M
 	now := time.Now()
 	currentTime := fmt.Sprintf("%d:%d", now.Hour(), now.Minute())
@@ -52,7 +54,7 @@ func fetchNovaPage() (io.Reader, error) {
 	data.Set("date", "")
 	data.Set("time", currentTime)
 	data.Set("page", "1")
-	data.Set("radio", "910")
+	data.Set("radio", fmt.Sprintf("%d", id))
 
 	// Create the request
 	req, err := http.NewRequest("POST", "https://www.nova.fr/wp-admin/admin-ajax.php", strings.NewReader(data.Encode()))
@@ -84,22 +86,4 @@ func fetchNovaPage() (io.Reader, error) {
 	}
 
 	return resp.Body, nil
-}
-
-func main() {
-	reader, err := fetchNovaPage()
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
-	}
-	defer reader.(io.ReadCloser).Close()
-
-	// Read and display response
-	body, err := io.ReadAll(reader)
-	if err != nil {
-		fmt.Printf("Error reading response: %v\n", err)
-		return
-	}
-
-	fmt.Printf("Response: %s\n", string(body))
 }
