@@ -91,7 +91,9 @@ func (p *Player) Play(s string) {
 			line := scanner.Text()
 			matches := progressRegex.FindStringSubmatch(line)
 			if len(matches) > 3 {
-				p.setState(Playing)
+				if p.state == Loading {
+					p.setState(Playing)
+				}
 				progress, _ := strconv.Atoi(matches[3])
 				if progress != p.info.Progress && progress < 100 {
 					p.info = PlayerInfo{
@@ -129,20 +131,19 @@ func (p *Player) Play(s string) {
 
 func (p *Player) Pause() error {
 	var err error
+	var newState int
 	if p.state == Playing {
 		err = p.sendSocket(`{ "command": ["set_property", "pause", true] }`)
+		newState = Paused
 	} else if p.state == Paused {
 		err = p.sendSocket(`{ "command": ["set_property", "pause", false] }`)
+		newState = Playing
 	}
 	if err != nil {
 		p.ch <- PlayerErrorMsg(err)
 		return err
 	}
-	if p.state == Playing {
-		p.setState(Paused)
-	} else {
-		p.setState(Playing)
-	}
+	p.setState(newState)
 	return nil
 }
 
@@ -186,6 +187,11 @@ func (p *Player) sendSocket(command string) error {
 	_, err = conn.Write([]byte(command + "\n"))
 	if err != nil {
 		return fmt.Errorf("Error writing to socket: %v\n", err)
+	}
+	reader := bufio.NewReader(conn)
+	_, err = reader.ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("Failed to read response: %v\n", err)
 	}
 	return nil
 }

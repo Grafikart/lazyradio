@@ -26,6 +26,7 @@ type trackListModel struct {
 type tracklistKeyMap struct {
 	openBrowser key.Binding
 	refresh     key.Binding
+	pause       key.Binding
 }
 
 var keys = tracklistKeyMap{
@@ -37,15 +38,24 @@ var keys = tracklistKeyMap{
 		key.WithKeys("r"),
 		key.WithHelp("r", "refresh"),
 	),
+	pause: key.NewBinding(
+		key.WithKeys("p"),
+		key.WithHelp("p", "pause/play"),
+	),
 }
 
 func newTrackList(p *radio.Player) trackListModel {
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	l.Title = "Track List"
+	l.DisableQuitKeybindings()
+	l.SetShowPagination(false)
 	l.SetShowStatusBar(false)
+	l.SetFilteringEnabled(false)
 	l.AdditionalShortHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			keys.openBrowser,
+			keys.refresh,
+			keys.pause,
 		}
 	}
 	return trackListModel{

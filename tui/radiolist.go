@@ -71,6 +71,7 @@ func newSidebar() radioListModel {
 	l.SetShowFilter(false)
 	l.SetShowHelp(false)
 	l.SetShowPagination(false)
+	l.SetFilteringEnabled(false)
 	return radioListModel{
 		list: l,
 	}
