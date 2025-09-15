@@ -13,8 +13,12 @@ import (
 
 var (
 	panelStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("62"))
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("62"))
+	normalText = lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#dddddd"})
+	mutedText = lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#A49FA5", Dark: "#777777"})
 )
 
 var (

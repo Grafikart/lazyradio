@@ -34,13 +34,14 @@ var keys = tracklistKeyMap{
 	),
 	refresh: key.NewBinding(
 		key.WithKeys("r"),
-		key.WithHelp("r", "playCmd music"),
+		key.WithHelp("r", "refresh"),
 	),
 }
 
 func newTrackList(p *radio.Player) trackList {
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	l.Title = "Track List"
+	l.SetShowStatusBar(false)
 	l.AdditionalShortHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			keys.openBrowser,

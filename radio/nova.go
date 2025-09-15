@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -22,8 +21,8 @@ func (i RadioItem) Description() string { return i.Artist }
 func (i RadioItem) FilterValue() string { return i.Name + " " + i.Artist }
 
 func FetchLastNovaTracks(n int) ([]RadioItem, error) {
-	f, err := os.Open(fmt.Sprintf("radio/nova%d.html", n))
-	// f, err := fetchNovaPage()
+	// f, err := os.Open(fmt.Sprintf("radio/nova%d.html", n))
+	f, err := fetchNovaPage()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open radio playlist: %w", err)
 	}

@@ -120,10 +120,17 @@ func (p *Player) Play(s string) {
 
 	// Wait for command completion in a goroutine
 	go func() {
-		p.cmd.Wait()
-		p.ch <- PlayerProgressMsg(PlayerInfo{
+		err := p.cmd.Wait()
+		if err != nil {
+			p.setState(Stopped)
+			return
+		}
+		p.info = PlayerInfo{
 			Progress: 100,
-		})
+			Current:  p.info.Duration,
+			Duration: p.info.Duration,
+		}
+		p.ch <- PlayerProgressMsg(p.info)
 	}()
 }
 
@@ -158,6 +165,9 @@ func (p *Player) Stop() error {
 }
 
 func (p *Player) setState(state int) {
+	if p.state == state {
+		return
+	}
 	p.state = state
 	p.ch <- PlayerStateChangedMsg(state)
 }

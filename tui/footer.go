@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"grafikart/lazyradio/radio"
 
-	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -50,12 +49,22 @@ func (m footer) Update(msg tea.Msg) (footer, tea.Cmd) {
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
+	case radio.PlayerOutputMsg:
+		m.info = string(msg)
+		return m, m.listenCmd
+	case radio.PlayerErrorMsg:
+		m.info = fmt.Sprintf("%v", msg)
+		m.info = fmt.Sprintf("%v", msg)
+		m.info = fmt.Sprintf("%v", msg)
+		m.info = fmt.Sprintf("%v", msg)
+		fmt.Printf("Error: %v\n", msg)
+		return m, m.listenCmd
 	case radio.PlayerProgressMsg:
+		m.info = ""
 		if msg.Progress == 100 {
-			m.info = "Ended"
 			return m, tea.Batch(
 				m.listenCmd,
-				m.endCmd,
+				endCmd,
 			)
 		}
 		return m, m.listenCmd
@@ -68,19 +77,26 @@ func (m footer) Update(msg tea.Msg) (footer, tea.Cmd) {
 
 func (m footer) View() string {
 	style := panelStyle.
+		Padding(0, 1).
 		Width(m.width).
 		Height(m.height)
 	var content string
 
 	if m.player.State() == radio.Loading {
-		content += m.spinner.View()
+		content += m.spinner.View() + " "
 	}
 
-	content += fmt.Sprintf("%s / %s - %d", m.player.Info().Current, m.player.Info().Duration, m.player.State())
+	if m.player.Info().Current != "" {
+		content += fmt.Sprintf("%s/%s", m.player.Info().Current, m.player.Info().Duration)
+	}
+
+	if m.info != "" {
+		content += " - " + m.info
+	}
 
 	return style.
 		Render(
-			content,
+			mutedText.Render(content),
 			m.prog.ViewAs(float64(m.player.Info().Progress)/100),
 		)
 }
@@ -89,16 +105,12 @@ func (m *footer) listenCmd() tea.Msg {
 	return <-m.player.Ch()
 }
 
-func (m *footer) endCmd() tea.Msg {
+func endCmd() tea.Msg {
 	return endMsg{}
-}
-
-func (m *footer) play(item list.Item) {
-	m.player.Play(item.FilterValue())
 }
 
 func (m *footer) SetSize(w, h int) {
 	m.width = w
 	m.height = h
-	m.prog.Width = w
+	m.prog.Width = w - 2
 }
