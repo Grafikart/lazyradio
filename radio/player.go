@@ -4,11 +4,13 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"grafikart/lazyradio/utils"
 	"net"
 	"os"
 	"os/exec"
 	"path"
 	"regexp"
+	"runtime"
 	"strconv"
 )
 
@@ -76,10 +78,25 @@ func (p *Player) Play(s string) {
 
 	progressRegex := regexp.MustCompile(`A:\s+\d{2}:(\d{2}:\d{2})\s+/\s+\d{2}:(\d{2}:\d{2})\s+\((\d+)%\)`)
 
-	// Start the command
-	if err := p.cmd.Start(); err != nil {
-		p.ch <- PlayerErrorMsg(fmt.Errorf("Error starting command: %v\n", err))
-		return
+	// Windows does not kill child process when the main process is killed
+	if runtime.GOOS == "windows" {
+		job, err := utils.NewJobObject()
+		if err != nil {
+			p.ch <- PlayerErrorMsg(fmt.Errorf("cannot create a new job : %v\n", err))
+		}
+		if err := p.cmd.Start(); err != nil {
+			p.ch <- PlayerErrorMsg(fmt.Errorf("cannot start the mpv command: %v\n", err))
+			return
+		}
+		if err := job.AddProcess(p.cmd.Process); err != nil {
+			p.ch <- PlayerErrorMsg(fmt.Errorf("cannot add the process to the job: %v\n", err))
+		}
+	} else {
+		// Start the command
+		if err := p.cmd.Start(); err != nil {
+			p.ch <- PlayerErrorMsg(fmt.Errorf("cannot start the mpv command: %v\n", err))
+			return
+		}
 	}
 
 	p.setState(Loading)
@@ -149,7 +166,7 @@ func (p *Player) Pause() error {
 
 func (p *Player) Stop() error {
 	if p.state == Stopped {
-		err := fmt.Errorf("Player already stopped")
+		err := fmt.Errorf("player already stopped")
 		p.ch <- PlayerErrorMsg(err)
 		return err
 	}
@@ -181,17 +198,17 @@ func (p *Player) Info() PlayerInfo {
 func (p *Player) sendSocket(command string) error {
 	conn, err := net.Dial("unix", p.socketFile)
 	if err != nil {
-		return fmt.Errorf("Error connecting to socket: %v\n", err)
+		return fmt.Errorf("error connecting to socket: %v\n", err)
 	}
 	defer conn.Close()
 	_, err = conn.Write([]byte(command + "\n"))
 	if err != nil {
-		return fmt.Errorf("Error writing to socket: %v\n", err)
+		return fmt.Errorf("error writing to socket: %v\n", err)
 	}
 	reader := bufio.NewReader(conn)
 	_, err = reader.ReadString('\n')
 	if err != nil {
-		return fmt.Errorf("Failed to read response: %v\n", err)
+		return fmt.Errorf("failed to read response: %v\n", err)
 	}
 	return nil
 }
