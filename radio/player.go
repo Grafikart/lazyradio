@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"path"
 	"regexp"
-	"runtime"
 	"strconv"
 )
 
@@ -79,24 +78,16 @@ func (p *Player) Play(s string) {
 	progressRegex := regexp.MustCompile(`A:\s+\d{2}:(\d{2}:\d{2})\s+/\s+\d{2}:(\d{2}:\d{2})\s+\((\d+)%\)`)
 
 	// Windows does not kill child process when the main process is killed
-	if runtime.GOOS == "windows" {
-		job, err := utils.NewJobObject()
-		if err != nil {
-			p.ch <- PlayerErrorMsg(fmt.Errorf("cannot create a new job : %v\n", err))
-		}
-		if err := p.cmd.Start(); err != nil {
-			p.ch <- PlayerErrorMsg(fmt.Errorf("cannot start the mpv command: %v\n", err))
-			return
-		}
-		if err := job.AddProcess(p.cmd.Process); err != nil {
-			p.ch <- PlayerErrorMsg(fmt.Errorf("cannot add the process to the job: %v\n", err))
-		}
-	} else {
-		// Start the command
-		if err := p.cmd.Start(); err != nil {
-			p.ch <- PlayerErrorMsg(fmt.Errorf("cannot start the mpv command: %v\n", err))
-			return
-		}
+	job, err := utils.NewJobObject()
+	if err != nil {
+		p.ch <- PlayerErrorMsg(fmt.Errorf("cannot create a new job : %v\n", err))
+	}
+	if err := p.cmd.Start(); err != nil {
+		p.ch <- PlayerErrorMsg(fmt.Errorf("cannot start the mpv command: %v\n", err))
+		return
+	}
+	if err := job.AddProcess(p.cmd.Process); err != nil {
+		p.ch <- PlayerErrorMsg(fmt.Errorf("cannot add the process to the job: %v\n", err))
 	}
 
 	p.setState(Loading)
@@ -134,6 +125,7 @@ func (p *Player) Play(s string) {
 		defer os.Remove(p.socketFile)
 		err := p.cmd.Wait()
 		if err != nil {
+			job.Close()
 			p.setState(Stopped)
 			return
 		}

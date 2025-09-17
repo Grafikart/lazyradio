@@ -13,6 +13,7 @@ type JobObject struct {
 	handle windows.Handle
 }
 
+// Link process with the main process so it is killed when the main process is killed
 func NewJobObject() (*JobObject, error) {
 	h, err := windows.CreateJobObject(nil, nil)
 	if err != nil {
