@@ -101,7 +101,7 @@ func (m footer) View() string {
 
 	return style.
 		Render(
-			mutedText.Render(content),
+			mutedTextStyle.Render(content),
 			m.prog.ViewAs(float64(m.player.Info().Progress)/100),
 		)
 }

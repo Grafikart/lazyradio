@@ -9,42 +9,48 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var (
-	NormalTitle = lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#dddddd"}).
-			Padding(0, 0, 0, 2) //nolint:mnd
-
-	SelectedTitle = lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder(), false, false, false, true).
-			BorderForeground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}).
-			Foreground(lipgloss.AdaptiveColor{Light: "#EE6FF8", Dark: "#EE6FF8"}).
-			Padding(0, 0, 0, 1)
-)
-
-type listDelegate struct{}
-
-func newListDelegate() listDelegate {
-	return listDelegate{}
+type simpleListDelegate struct {
+	normalStyle   lipgloss.Style
+	selectedStyle lipgloss.Style
 }
 
-func (l listDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
+func newSimpleListDelegate(focused bool) simpleListDelegate {
+	d := newDefaultListDelegate(focused)
+	return simpleListDelegate{
+		normalStyle:   d.Styles.NormalTitle,
+		selectedStyle: d.Styles.SelectedTitle,
+	}
+}
+
+func newDefaultListDelegate(focused bool) list.DefaultDelegate {
+	d := list.NewDefaultDelegate()
+	if focused {
+		return d
+	}
+	d.Styles.SelectedTitle = d.Styles.NormalTitle
+	d.Styles.SelectedDesc = d.Styles.NormalTitle
+	d.Styles.NormalTitle = d.Styles.NormalDesc
+	return d
+}
+
+func (l simpleListDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
 	var content string
 	if m.Index() == index {
-		content = SelectedTitle.Render(item.FilterValue())
+		content = l.selectedStyle.Render(item.FilterValue())
 	} else {
-		content = NormalTitle.Render(item.FilterValue())
+		content = l.normalStyle.Render(item.FilterValue())
 	}
 	fmt.Fprint(w, content)
 }
 
-func (l listDelegate) Height() int {
+func (l simpleListDelegate) Height() int {
 	return 1
 }
 
-func (l listDelegate) Spacing() int {
+func (l simpleListDelegate) Spacing() int {
 	return 1
 }
 
-func (l listDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
+func (l simpleListDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	return nil
 }

@@ -15,12 +15,13 @@ type trackListModel struct {
 	list list.Model
 
 	// state
-	item   radio.TrackItem
-	width  int
-	height int
-	msg    string
-	player *radio.Player
-	radio  radioItem
+	item    radio.TrackItem
+	width   int
+	height  int
+	msg     string
+	player  *radio.Player
+	radio   radioItem
+	focused bool
 }
 
 type tracklistKeyMap struct {
@@ -45,12 +46,13 @@ var keys = tracklistKeyMap{
 }
 
 func newTrackList(p *radio.Player) trackListModel {
-	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	l := list.New([]list.Item{}, newDefaultListDelegate(false), 0, 0)
 	l.Title = "Track List"
 	l.DisableQuitKeybindings()
 	l.SetShowPagination(false)
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
+	l.Styles.Title = mutedListTitleStyle
 	l.AdditionalShortHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			keys.openBrowser,
@@ -84,8 +86,10 @@ func (m trackListModel) Update(msg tea.Msg) (trackListModel, tea.Cmd) {
 		// Play the track
 		case msg.Type == tea.KeyEnter:
 			item := m.list.SelectedItem()
-			m.player.Play(item.FilterValue())
-			return m, nil
+			if item != nil {
+				m.player.Play(item.FilterValue())
+				return m, nil
+			}
 		// Refresh track list
 		case key.Matches(msg, keys.refresh):
 			return m, func() tea.Msg { return radioSelectedMsg(m.radio) }
@@ -93,6 +97,7 @@ func (m trackListModel) Update(msg tea.Msg) (trackListModel, tea.Cmd) {
 	case radioSelectedMsg:
 		m.list.ToggleSpinner()
 		m.radio = radioItem(msg)
+		m.list.Title = msg.name
 		return m, func() tea.Msg {
 			items, err := msg.fetcher()
 			if err != nil {
@@ -127,15 +132,31 @@ func (m trackListModel) Update(msg tea.Msg) (trackListModel, tea.Cmd) {
 	return m, cmd
 }
 
-func (m trackListModel) View(focused bool) string {
+func (m trackListModel) View() string {
 	style := panelStyle
-	if !focused {
+	if !m.focused {
 		style = mutedPanelStyle
 	}
 	return style.
 		Width(m.width).
 		Height(m.height).
 		Render(m.msg, m.list.View())
+}
+
+func (m *trackListModel) Focus() {
+	m.list.SetDelegate(newDefaultListDelegate(true))
+	m.list.Styles.Title = listTitleStyle
+	m.focused = true
+}
+
+func (m *trackListModel) Blur() {
+	m.list.SetDelegate(newDefaultListDelegate(false))
+	m.list.Styles.Title = mutedListTitleStyle
+	m.focused = false
+}
+
+func (m trackListModel) Focused() bool {
+	return m.focused
 }
 
 func (m *trackListModel) SetSize(w, h int) {

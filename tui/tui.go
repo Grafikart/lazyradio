@@ -11,21 +11,21 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-const (
-	sidebarPanel = iota
-	tracksPanel  = iota
-)
-
 var (
+	mutedColor = lipgloss.AdaptiveColor{Light: "#A49FA5", Dark: "#777777"}
 	panelStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("62"))
 	mutedPanelStyle = panelStyle.
-			BorderForeground(lipgloss.AdaptiveColor{Light: "#A49FA5", Dark: "#777777"})
-	normalText = lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#dddddd"})
-	mutedText = lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#A49FA5", Dark: "#777777"})
+			BorderForeground(mutedColor)
+	mutedTextStyle = lipgloss.NewStyle().
+			Foreground(mutedColor)
+	listTitleStyle = lipgloss.NewStyle().
+			Background(lipgloss.Color("62")).
+			Foreground(lipgloss.Color("230")).
+			Padding(0, 1)
+	mutedListTitleStyle = listTitleStyle.
+				Background(mutedColor)
 )
 
 var (
@@ -50,12 +50,13 @@ type Model struct {
 
 func NewModel() Model {
 	p := radio.NewPlayer()
+	tl := newTrackList(p)
+	tl.Focus()
 	return Model{
 		player:    p,
-		trackList: newTrackList(p),
+		trackList: tl,
 		footer:    newFooter(p),
-		sidebar:   newSidebar(),
-		panel:     sidebarPanel,
+		sidebar:   newRadioList(),
 	}
 }
 
@@ -87,9 +88,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "p":
 				m.player.Pause()
 			case "/":
-				m.panel = sidebarPanel
+				if m.trackList.Focused() {
+					m.togglePanel()
+				}
 			}
-
 		}
 
 	// Resize
@@ -98,14 +100,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.updateSizes()
 	case radioSelectedMsg:
-		if m.panel == sidebarPanel {
+		if m.sidebar.Focused() {
 			m.togglePanel()
 		}
 		m.trackList, cmdList = m.trackList.Update(msg)
 		return m, cmdList
 	}
 	m.footer, cmdFooter = m.footer.Update(msg)
-	if m.panel == tracksPanel {
+	if m.trackList.Focused() {
 		m.trackList, cmdList = m.trackList.Update(msg)
 	} else {
 		m.sidebar, cmdList = m.sidebar.Update(msg)
@@ -118,8 +120,8 @@ func (m Model) View() string {
 		lipgloss.Top,
 		lipgloss.JoinHorizontal(
 			lipgloss.Left,
-			m.sidebar.View(m.panel == sidebarPanel),
-			m.trackList.View(m.panel == tracksPanel),
+			m.sidebar.View(),
+			m.trackList.View(),
 		),
 		m.footer.View(),
 	)
@@ -133,11 +135,14 @@ func (m *Model) updateSizes() {
 	m.trackList.SetSize(contentWidth, contentHeight)
 }
 
+// Switch between the sidebar and the main panel
 func (m *Model) togglePanel() {
-	if m.panel == tracksPanel {
-		m.panel = sidebarPanel
+	if m.trackList.Focused() {
+		m.trackList.Blur()
+		m.sidebar.Focus()
 	} else {
-		m.panel = tracksPanel
+		m.trackList.Focus()
+		m.sidebar.Blur()
 	}
 }
 

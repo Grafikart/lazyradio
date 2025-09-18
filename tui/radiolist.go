@@ -43,17 +43,19 @@ func (s radioItem) FilterValue() string {
 }
 
 type radioListModel struct {
-	list   list.Model
-	width  int
-	height int
+	list    list.Model
+	width   int
+	height  int
+	focused bool
 }
 
-func newSidebar() radioListModel {
-	l := list.New(sidebarItemsToListItems(radios), newListDelegate(), 0, 0)
+func newRadioList() radioListModel {
+	l := list.New(sidebarItemsToListItems(radios), newSimpleListDelegate(false), 0, 0)
 	l.Title = "Radios"
 	l.DisableQuitKeybindings()
 	l.SetShowStatusBar(false)
 	l.SetShowPagination(true)
+	l.Styles.Title = mutedListTitleStyle
 	return radioListModel{
 		list: l,
 	}
@@ -80,9 +82,9 @@ func (m radioListModel) Update(msg tea.Msg) (radioListModel, tea.Cmd) {
 	return m, cmdList
 }
 
-func (m radioListModel) View(focused bool) string {
+func (m radioListModel) View() string {
 	style := panelStyle
-	if !focused {
+	if !m.focused {
 		style = mutedPanelStyle
 	}
 	return style.
@@ -95,6 +97,22 @@ func (m *radioListModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 	m.list.SetSize(width, height)
+}
+
+func (m *radioListModel) Focus() {
+	m.list.SetDelegate(newSimpleListDelegate(true))
+	m.list.Styles.Title = listTitleStyle
+	m.focused = true
+}
+
+func (m *radioListModel) Blur() {
+	m.list.SetDelegate(newSimpleListDelegate(false))
+	m.list.Styles.Title = mutedListTitleStyle
+	m.focused = false
+}
+
+func (m radioListModel) Focused() bool {
+	return m.focused
 }
 
 // Converts a list of radioItem into a list compatible items
