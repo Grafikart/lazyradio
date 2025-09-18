@@ -147,6 +147,8 @@ func (p *Player) Pause() error {
 	} else if p.state == Paused {
 		err = p.sendSocket(`{ "command": ["set_property", "pause", false] }`)
 		newState = Playing
+	} else {
+		return nil
 	}
 	if err != nil {
 		p.ch <- PlayerErrorMsg(err)

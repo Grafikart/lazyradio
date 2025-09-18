@@ -76,10 +76,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		// Quit when pressing CTRL C or Esc
-		case tea.KeyCtrlC, tea.KeyEsc:
+		case tea.KeyCtrlC:
 			return m, tea.Quit
 		case tea.KeyLeft, tea.KeyRight:
 			m.togglePanel()
+		case tea.KeySpace:
+			m.player.Pause()
 		case tea.KeyRunes:
 			switch string(msg.Runes) {
 			case "p":

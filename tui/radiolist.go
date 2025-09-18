@@ -8,42 +8,15 @@ import (
 )
 
 var radios = []radioItem{
-	{
-		name:    "Radio Nova",
-		fetcher: radio.FetcherNova(910),
-	},
-	{
-		name:    "Nova Hip-Hop",
-		fetcher: radio.FetcherNova(196018),
-	},
-	{
-		name:    "Nova Reggae",
-		fetcher: radio.FetcherNova(220781),
-	},
-	{
-		name:    "Nova Soul",
-		fetcher: radio.FetcherNova(216011),
-	},
-	{
-		name:    "Nouvo Nova",
-		fetcher: radio.FetcherNova(79676),
-	},
-	{
-		name:    "Nova la nuit",
-		fetcher: radio.FetcherNova(916),
-	},
-	{
-		name:    "Nova Classics",
-		fetcher: radio.FetcherNova(913),
-	},
-	{
-		name:    "Nova Danse",
-		fetcher: radio.FetcherNova(560),
-	},
-	{
-		name:    "Nova la plage",
-		fetcher: radio.FetcherNova(268797),
-	},
+	{name: "Radio Nova", fetcher: radio.FetcherNova(910)},
+	{name: "Nova Hip-Hop", fetcher: radio.FetcherNova(196018)},
+	{name: "Nova Reggae", fetcher: radio.FetcherNova(220781)},
+	{name: "Nova Soul", fetcher: radio.FetcherNova(216011)},
+	{name: "Nouvo Nova", fetcher: radio.FetcherNova(79676)},
+	{name: "Nova la nuit", fetcher: radio.FetcherNova(916)},
+	{name: "Nova Classics", fetcher: radio.FetcherNova(913)},
+	{name: "Nova Danse", fetcher: radio.FetcherNova(560)},
+	{name: "Nova la plage", fetcher: radio.FetcherNova(268797)},
 	{name: "Fip ", fetcher: radio.FetcherFipTracks("fip")},
 	{name: "Fip Sacré français", fetcher: radio.FetcherFipTracks("radio-sacre-francais")},
 	{name: "Fip Rock", fetcher: radio.FetcherFipTracks("radio-rock")},
@@ -99,6 +72,7 @@ func (m radioListModel) Update(msg tea.Msg) (radioListModel, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyEnter:
 			item := m.list.SelectedItem().(radioItem)
+			m.list.FilterInput.SetValue("")
 			return m, func() tea.Msg { return radioSelectedMsg(item) }
 		}
 	}
