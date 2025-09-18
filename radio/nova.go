@@ -11,15 +11,6 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-type TrackItem struct {
-	Name   string
-	Artist string
-}
-
-func (i TrackItem) Title() string       { return i.Name }
-func (i TrackItem) Description() string { return i.Artist }
-func (i TrackItem) FilterValue() string { return i.Name + " " + i.Artist }
-
 func FetcherNova(id int) func() ([]TrackItem, error) {
 	return func() ([]TrackItem, error) {
 		// f, err := os.Open(fmt.Sprintf("radio/nova%d.html", n))

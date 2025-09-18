@@ -80,10 +80,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case tea.KeyLeft, tea.KeyRight:
 			m.togglePanel()
-		}
-		switch msg.String() {
-		case "p":
-			m.player.Pause()
+		case tea.KeyRunes:
+			switch string(msg.Runes) {
+			case "p":
+				m.player.Pause()
+			case "/":
+				m.panel = sidebarPanel
+			}
+
 		}
 
 	// Resize

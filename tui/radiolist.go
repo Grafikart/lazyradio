@@ -44,6 +44,18 @@ var radios = []radioItem{
 		name:    "Nova la plage",
 		fetcher: radio.FetcherNova(268797),
 	},
+	{name: "Fip ", fetcher: radio.FetcherFipTracks("fip")},
+	{name: "Fip Sacré français", fetcher: radio.FetcherFipTracks("radio-sacre-francais")},
+	{name: "Fip Rock", fetcher: radio.FetcherFipTracks("radio-rock")},
+	{name: "Fip Jazz", fetcher: radio.FetcherFipTracks("radio-jazz")},
+	{name: "Fip Groove", fetcher: radio.FetcherFipTracks("radio-groove")},
+	{name: "Fip Reggae", fetcher: radio.FetcherFipTracks("radio-reggae")},
+	{name: "Fip Pop", fetcher: radio.FetcherFipTracks("radio-pop")},
+	{name: "Fip Electro", fetcher: radio.FetcherFipTracks("radio-electro")},
+	{name: "Fip Monde", fetcher: radio.FetcherFipTracks("radio-monde")},
+	{name: "Fip Nouveautés", fetcher: radio.FetcherFipTracks("radio-nouveautes")},
+	{name: "Fip Metal", fetcher: radio.FetcherFipTracks("radio-metal")},
+	{name: "Fip Hip Hop", fetcher: radio.FetcherFipTracks("radio-hip-hop")},
 }
 
 type radioItem struct {
@@ -68,10 +80,7 @@ func newSidebar() radioListModel {
 	l.Title = "Radios"
 	l.DisableQuitKeybindings()
 	l.SetShowStatusBar(false)
-	l.SetShowFilter(false)
-	l.SetShowHelp(false)
-	l.SetShowPagination(false)
-	l.SetFilteringEnabled(false)
+	l.SetShowPagination(true)
 	return radioListModel{
 		list: l,
 	}

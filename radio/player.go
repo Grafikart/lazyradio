@@ -19,6 +19,15 @@ const (
 	Playing = iota
 )
 
+type TrackItem struct {
+	Name   string
+	Artist string
+}
+
+func (i TrackItem) Title() string       { return i.Name }
+func (i TrackItem) Description() string { return i.Artist }
+func (i TrackItem) FilterValue() string { return i.Name + " " + i.Artist }
+
 type PlayerMsg interface{}
 type PlayerProgressMsg PlayerInfo
 type PlayerStateChangedMsg int
